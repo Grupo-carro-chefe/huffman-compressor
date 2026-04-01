@@ -9,7 +9,7 @@ import java.util.ArrayList;
  *   - Filho direito:  2*i + 2
  *   - Pai:            (i - 1) / 2
  *
- * Responsável: André
+ * Responsável: Rodrigo
  */
 public class MinHeap {
 
