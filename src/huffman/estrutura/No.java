@@ -4,7 +4,7 @@ package huffman.estrutura;
  * Representa um nó da Árvore de Huffman.
  * Usado tanto como folha (com caractere) quanto como nó interno.
  *
- * Responsável: André
+ * Responsável: Rodrigo
  */
 public class No implements Comparable<No> {
 
