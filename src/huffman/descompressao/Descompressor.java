@@ -6,10 +6,10 @@ import huffman.estrutura.No;
 import java.io.*;
 
 /**
- * Responsável pela descompressão de arquivos .huff.
- * Reconstrói a árvore a partir do cabeçalho e decodifica os bits.
+ * Responsavel pela descompressao de arquivos .huff.
+ * Reconstrói a arvore a partir do cabecalho e decodifica os bits.
  *
- * Responsável: Rodrigo
+ * Responsavel: Rodrigo
  */
 public class Descompressor {
 
@@ -20,24 +20,103 @@ public class Descompressor {
      * @param caminhoSaida    caminho do arquivo restaurado
      */
     public void descomprimir(String caminhoEntrada, String caminhoSaida) throws IOException {
-        // TODO: implementar
-        // 1. Ler cabeçalho (256 frequências) do arquivo .huff
-        // 2. Reconstruir a árvore de Huffman com ArvoreHuffman.construir()
-        // 3. Percorrer a árvore guiado pelos bits (percurso guiado pelos dados)
-        // 4. A cada folha encontrada, escrever o caractere no arquivo de saída
+        try (DataInputStream entrada = new DataInputStream(new BufferedInputStream(new FileInputStream(caminhoEntrada)));
+             BufferedOutputStream saida = new BufferedOutputStream(new FileOutputStream(caminhoSaida))) {
+
+            int[] frequencias = lerCabecalho(entrada);
+            int totalCaracteres = somarFrequencias(frequencias);
+
+            if (totalCaracteres == 0) {
+                return;
+            }
+
+            ArvoreHuffman arvore = new ArvoreHuffman();
+            arvore.construir(frequencias);
+            No raiz = arvore.getRaiz();
+
+            if (raiz == null) {
+                return;
+            }
+
+            if (raiz.eFolha()) {
+                for (int i = 0; i < totalCaracteres; i++) {
+                    saida.write((byte) raiz.caractere);
+                }
+                return;
+            }
+
+            BitInputStream streamDeBits = new BitInputStream(entrada);
+            for (int i = 0; i < totalCaracteres; i++) {
+                char caractere = decodificarProximoCaractere(raiz, streamDeBits);
+                saida.write((byte) caractere);
+            }
+        }
     }
 
     /**
-     * Percurso guiado: navega da raiz até uma folha seguindo os bits lidos.
+     * Percurso guiado: navega da raiz ate uma folha seguindo os bits lidos.
      * Retorna o caractere decodificado.
      */
-    private char decodificarProximoCaractere(No raiz, /* stream de bits */ Object streamDeBits) {
-        // TODO: implementar percurso guiado pelos dados
-        // while (nó atual não é folha):
-        //   lê próximo bit
-        //   bit == '0' -> vai para esquerda
-        //   bit == '1' -> vai para direita
-        // retorna nó.caractere
-        return '\0';
+    private char decodificarProximoCaractere(No raiz, BitInputStream streamDeBits) throws IOException {
+        No atual = raiz;
+
+        while (!atual.eFolha()) {
+            int bit = streamDeBits.readBit();
+
+            if (bit == -1) {
+                throw new EOFException("Fim inesperado dos dados comprimidos.");
+            }
+
+            atual = (bit == 0) ? atual.esquerda : atual.direita;
+
+            if (atual == null) {
+                throw new IOException("Caminho invalido na arvore de Huffman.");
+            }
+        }
+
+        return atual.caractere;
+    }
+
+    private int[] lerCabecalho(DataInputStream entrada) throws IOException {
+        int[] frequencias = new int[256];
+
+        for (int i = 0; i < frequencias.length; i++) {
+            frequencias[i] = entrada.readInt();
+        }
+
+        return frequencias;
+    }
+
+    private int somarFrequencias(int[] frequencias) {
+        int total = 0;
+
+        for (int frequencia : frequencias) {
+            total += frequencia;
+        }
+
+        return total;
+    }
+
+    private static class BitInputStream {
+        private final InputStream input;
+        private int buffer;
+        private int bitsRestantes;
+
+        BitInputStream(InputStream input) {
+            this.input = input;
+        }
+
+        int readBit() throws IOException {
+            if (bitsRestantes == 0) {
+                buffer = input.read();
+                if (buffer == -1) {
+                    return -1;
+                }
+                bitsRestantes = 8;
+            }
+
+            bitsRestantes--;
+            return (buffer >> bitsRestantes) & 1;
+        }
     }
 }
