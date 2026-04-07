@@ -54,10 +54,42 @@ public class Compressor {
     }
 
     private long escreverArquivo(String entrada, String saida, int[] frequencias, String[] tabela) throws IOException {
-        // TODO: implementar escrita do cabeçalho + bits comprimidos no arquivo .huff
-        // Sugestão: gravar os 256 inteiros de frequência como cabeçalho,
-        // depois os bits agrupados em bytes com padding no último byte.
-        return 0;
+        long totalBits = 0;
+
+        try (DataOutputStream saidaStream = new DataOutputStream(new BufferedOutputStream(new FileOutputStream(saida)));
+             FileInputStream fis = new FileInputStream(entrada)) {
+
+            // Cabeçalho: 256 inteiros de frequência (4 bytes cada = 1024 bytes)
+            for (int freq : frequencias) {
+                saidaStream.writeInt(freq);
+            }
+
+            // Gravar bits comprimidos agrupados em bytes (MSB primeiro)
+            int buffer = 0;
+            int bitsNoBuffer = 0;
+            int b;
+            while ((b = fis.read()) != -1) {
+                String codigo = tabela[b];
+                for (char bit : codigo.toCharArray()) {
+                    buffer = (buffer << 1) | (bit == '1' ? 1 : 0);
+                    bitsNoBuffer++;
+                    totalBits++;
+                    if (bitsNoBuffer == 8) {
+                        saidaStream.write(buffer);
+                        buffer = 0;
+                        bitsNoBuffer = 0;
+                    }
+                }
+            }
+
+            // Flush dos bits restantes com padding de zeros
+            if (bitsNoBuffer > 0) {
+                buffer = buffer << (8 - bitsNoBuffer);
+                saidaStream.write(buffer);
+            }
+        }
+
+        return totalBits;
     }
 
     // ---- Métodos de impressão (ETAPAS do console) ----
